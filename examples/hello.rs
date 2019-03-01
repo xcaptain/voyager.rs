@@ -16,7 +16,7 @@ fn main() {
         w.write(format!("in world handler, path is: {}", path));
     };
 
-    m.handle("/hello".to_string(), Handler::new(hello_handler));
-    m.handle("/world".to_string(), Handler::new(world_handler));
+    m.handle("/hello".to_string(), Handler::new(Box::new(hello_handler)));
+    m.handle("/world".to_string(), Handler::new(Box::new(world_handler)));
     http::listen_and_serve(":8080".to_string(), m);
 }

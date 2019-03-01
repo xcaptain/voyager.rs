@@ -4,32 +4,23 @@ use crate::http::response::ResponseWriter;
 use std::collections::HashMap;
 
 #[derive(Default)]
-pub struct Mux<T>
-where
-    T: Fn(&ResponseWriter, &Request) + Clone,
-{
-    m: HashMap<String, MuxEntry<T>>,
+pub struct Mux {
+    m: HashMap<String, MuxEntry>,
 }
 
-#[derive(Clone)]
-struct MuxEntry<T>
-where
-    T: Fn(&ResponseWriter, &Request) + Clone,
-{
-    h: Handler<T>,
+// #[derive(Clone)]
+struct MuxEntry {
+    h: Handler,
     pattern: String,
 }
 
-impl<T> Mux<T>
-where
-    T: Fn(&ResponseWriter, &Request) + Clone,
-{
+impl Mux {
     pub fn new() -> Self {
         Mux { m: HashMap::new() }
     }
 
     /// regist router pattern
-    pub fn handle(&mut self, pattern: String, handler: Handler<T>) {
+    pub fn handle(&mut self, pattern: String, handler: Handler) {
         let entry = MuxEntry {
             h: handler,
             pattern: pattern.clone(),
@@ -38,10 +29,10 @@ where
     }
 
     /// get handler from mux
-    pub fn handler(&self, r: &Request) -> Option<Handler<T>> {
+    pub fn handler(&self, r: &Request) -> Option<&Handler> {
         let path = r.url.path.clone();
         if let Some(entry) = self.m.get(&path) {
-            return Some(entry.clone().h.clone());
+            return Some(&entry.h);
         }
         None
     }
@@ -50,6 +41,7 @@ where
         if let Some(handler) = self.handler(&r) {
             return handler.serve_http(w, r);
         }
+        // TODO: implement NotFoundHandler
         println!("404 not found");
     }
 }

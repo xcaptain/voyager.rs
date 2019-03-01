@@ -1,19 +1,12 @@
 use crate::http::request::Request;
 use crate::http::response::ResponseWriter;
 
-#[derive(Clone, Default)]
-pub struct Handler<T>
-where
-    T: Fn(&ResponseWriter, &Request) + Clone,
-{
-    f: T,
+pub struct Handler {
+    f: Box<Fn(&ResponseWriter, &Request)>,
 }
 
-impl<T> Handler<T>
-where
-    T: Fn(&ResponseWriter, &Request) + Clone,
-{
-    pub fn new(f: T) -> Self {
+impl Handler {
+    pub fn new(f: Box<Fn(&ResponseWriter, &Request)>) -> Self {
         Handler { f }
     }
 
