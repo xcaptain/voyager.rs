@@ -8,7 +8,10 @@ pub mod server;
 use mux::Mux;
 use server::Server;
 
-pub fn listen_and_serve(addr: String, m: Mux) {
+use request::Request;
+use response::ResponseWriter;
+
+pub fn listen_and_serve<T: Fn(&ResponseWriter, &Request) + Clone>(addr: String, m: Mux<T>) {
     let server = Server::new(addr, m);
     server.listen_and_serve()
 }

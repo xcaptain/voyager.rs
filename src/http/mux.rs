@@ -4,23 +4,32 @@ use crate::http::response::ResponseWriter;
 use std::collections::HashMap;
 
 #[derive(Default)]
-pub struct Mux {
-    m: HashMap<String, MuxEntry>,
+pub struct Mux<T>
+where
+    T: Fn(&ResponseWriter, &Request) + Clone,
+{
+    m: HashMap<String, MuxEntry<T>>,
 }
 
 #[derive(Clone)]
-struct MuxEntry {
-    h: Handler,
+struct MuxEntry<T>
+where
+    T: Fn(&ResponseWriter, &Request) + Clone,
+{
+    h: Handler<T>,
     pattern: String,
 }
 
-impl Mux {
+impl<T> Mux<T>
+where
+    T: Fn(&ResponseWriter, &Request) + Clone,
+{
     pub fn new() -> Self {
         Mux { m: HashMap::new() }
     }
 
     /// regist router pattern
-    pub fn handle(&mut self, pattern: String, handler: Handler) {
+    pub fn handle(&mut self, pattern: String, handler: Handler<T>) {
         let entry = MuxEntry {
             h: handler,
             pattern: pattern.clone(),
@@ -29,10 +38,10 @@ impl Mux {
     }
 
     /// get handler from mux
-    pub fn handler(&self, r: &Request) -> Option<Handler> {
+    pub fn handler(&self, r: &Request) -> Option<Handler<T>> {
         let path = r.url.path.clone();
         if let Some(entry) = self.m.get(&path) {
-            return Some(entry.clone().h);
+            return Some(entry.clone().h.clone());
         }
         None
     }

@@ -2,13 +2,19 @@ use crate::http::mux::Mux;
 use crate::http::request::Request;
 use crate::http::response::ResponseWriter;
 
-pub struct Server {
+pub struct Server<T>
+where
+    T: Fn(&ResponseWriter, &Request) + Clone,
+{
     pub addr: String,
-    pub m: Mux,
+    pub m: Mux<T>,
 }
 
-impl Server {
-    pub fn new(addr: String, m: Mux) -> Self {
+impl<T> Server<T>
+where
+    T: Fn(&ResponseWriter, &Request) + Clone,
+{
+    pub fn new(addr: String, m: Mux<T>) -> Self {
         Server { addr, m }
     }
 
