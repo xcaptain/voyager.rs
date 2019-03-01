@@ -1,6 +1,9 @@
 use crate::http::handler::Handler;
+use crate::http::request::Request;
+use crate::http::response::ResponseWriter;
 use std::collections::HashMap;
 
+#[derive(Default)]
 pub struct Mux {
     m: HashMap<String, MuxEntry>,
 }
@@ -16,7 +19,7 @@ impl Mux {
         Mux { m: HashMap::new() }
     }
 
-    // regist router pattern
+    /// regist router pattern
     pub fn handle(&mut self, pattern: String, handler: Handler) {
         let entry = MuxEntry {
             h: handler,
@@ -25,16 +28,20 @@ impl Mux {
         self.m.entry(pattern).or_insert(entry);
     }
 
-    // get handler from mux
-    pub fn handler(&self, pattern: String) -> Option<Handler> {
-        if let Some(entry) = self.m.get(&pattern) {
+    /// get handler from mux
+    pub fn handler(&self, r: &Request) -> Option<Handler> {
+        let path = r.url.path.clone();
+        if let Some(entry) = self.m.get(&path) {
             return Some(entry.clone().h);
         }
-        return None;
+        None
     }
 
-    pub fn serve_http(&self) {
-        println!("mux.rs: serve http");
+    pub fn serve_http(&self, w: &ResponseWriter, r: &Request) {
+        if let Some(handler) = self.handler(&r) {
+            return handler.serve_http(w, r);
+        }
+        println!("404 not found");
     }
 }
 
@@ -48,9 +55,6 @@ mod tests {
         let handler = Handler::new();
 
         mux.handle("/hello".to_string(), handler);
-        let _saved_handler = mux.handler("/hello".to_string());
-
-        // TODO: compare 2 handler is the same
         assert_eq!(1, 1);
     }
 }
