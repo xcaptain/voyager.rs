@@ -26,7 +26,7 @@ where
         let w = ResponseWriter::new();
         let r = Request::new(
             "GET".to_string(),
-            "/hello".to_string(),
+            "/world".to_string(),
             "http 1.0".to_string(),
         );
         self.m.serve_http(&w, &r)

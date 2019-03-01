@@ -22,5 +22,3 @@ where
         (self.f)(w, r)
     }
 }
-//
-// pub type Handler = Fn(&ResponseWriter, &Request);

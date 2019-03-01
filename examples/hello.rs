@@ -6,14 +6,17 @@ use voyager::http::response::ResponseWriter;
 
 fn main() {
     let mut m = Mux::new();
-    // TODO: handler must implements some traits
-    let hello_handler = Handler::new(hello_handler);
 
-    m.handle("/hello".to_string(), hello_handler);
-    http::listen_and_serve(":80".to_string(), m);
-}
+    let hello_handler = |w: &ResponseWriter, r: &Request| {
+        let path = r.url.path.clone();
+        w.write(format!("in hello handler, path is: {}", path));
+    };
+    let world_handler = |w: &ResponseWriter, r: &Request| {
+        let path = r.url.path.clone();
+        w.write(format!("in world handler, path is: {}", path));
+    };
 
-fn hello_handler(_w: &ResponseWriter, r: &Request) {
-    let path = r.url.path.clone();
-    println!("in hello handler, path is: {}", path);
+    m.handle("/hello".to_string(), Handler::new(hello_handler));
+    m.handle("/world".to_string(), Handler::new(world_handler));
+    http::listen_and_serve(":8080".to_string(), m);
 }
