@@ -1,14 +1,14 @@
 use crate::http::handler::Handler;
-use crate::http::request::Request;
-use crate::http::response::ResponseWriter;
+use http::response::Builder;
+use http::{Request, Response};
 use std::collections::HashMap;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Mux {
     m: HashMap<String, MuxEntry>,
 }
 
-// #[derive(Clone)]
+#[derive(Clone)]
 struct MuxEntry {
     h: Handler,
     pattern: String,
@@ -29,20 +29,27 @@ impl Mux {
     }
 
     /// get handler from mux
-    pub fn handler(&self, r: &Request) -> Option<&Handler> {
-        let path = r.url.path.clone();
+    pub fn handler(&self, r: &Request<()>) -> Option<&Handler> {
+        let path = r.uri().path().to_owned();
         if let Some(entry) = self.m.get(&path) {
             return Some(&entry.h);
         }
         None
     }
 
-    pub fn serve_http(&self, w: &ResponseWriter, r: &Request) {
+    pub fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<String> {
         if let Some(handler) = self.handler(&r) {
             return handler.serve_http(w, r);
         }
         // TODO: implement NotFoundHandler
-        println!("404 not found");
+        return self.serve_http_not_found(w, r);
+    }
+
+    pub fn serve_http_not_found(&self, w: &mut Builder, r: &Request<()>) -> Response<String> {
+        println!("handler: serve http 404 not found");
+        let path = r.uri().path();
+        w.body(format!("in 404 not found handler, path is: {}", path))
+            .unwrap()
     }
 }
 

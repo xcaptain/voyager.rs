@@ -5,3 +5,9 @@ authors = ["Joey <joey.xf@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+http = "0.1"
+httparse = "1.0"
+futures = "0.1.20"
+bytes = "0.4"
+time = "0.1"
+tokio = "0.1"

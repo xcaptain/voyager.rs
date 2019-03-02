@@ -1,16 +1,18 @@
-use crate::http::request::Request;
-use crate::http::response::ResponseWriter;
+use http::response::Builder;
+use http::{Request, Response};
+use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct Handler {
-    f: Box<Fn(&ResponseWriter, &Request)>,
+    f: Arc<Fn(&mut Builder, &Request<()>) -> Response<String> + Sync + Send>,
 }
 
 impl Handler {
-    pub fn new(f: Box<Fn(&ResponseWriter, &Request)>) -> Self {
+    pub fn new(f: Arc<Fn(&mut Builder, &Request<()>) -> Response<String> + Sync + Send>) -> Self {
         Handler { f }
     }
 
-    pub fn serve_http(&self, w: &ResponseWriter, r: &Request) {
+    pub fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<String> {
         println!("handler: serve http");
         (self.f)(w, r)
     }
