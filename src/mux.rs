@@ -1,6 +1,6 @@
-use crate::http::handler::Handler;
+use crate::handler::{Handler, HandlerFunc};
 use http::response::Builder;
-use http::{Request, Response};
+use http::{Request, Response, StatusCode};
 use std::collections::HashMap;
 
 #[derive(Clone, Default)]
@@ -19,10 +19,18 @@ impl Mux {
         Mux { m: HashMap::new() }
     }
 
-    /// regist router pattern
+    /// register router pattern
     pub fn handle(&mut self, pattern: String, handler: Handler) {
         let entry = MuxEntry {
             h: handler,
+            pattern: pattern.clone(),
+        };
+        self.m.entry(pattern).or_insert(entry);
+    }
+
+    pub fn handle_func(&mut self, pattern: String, handler: HandlerFunc) {
+        let entry = MuxEntry {
+            h: Handler::new(handler),
             pattern: pattern.clone(),
         };
         self.m.entry(pattern).or_insert(entry);
@@ -41,14 +49,13 @@ impl Mux {
         if let Some(handler) = self.handler(&r) {
             return handler.serve_http(w, r);
         }
-        // TODO: implement NotFoundHandler
-        return self.serve_http_not_found(w, r);
+        self.serve_http_not_found(w, r)
     }
 
     pub fn serve_http_not_found(&self, w: &mut Builder, r: &Request<()>) -> Response<String> {
-        println!("handler: serve http 404 not found");
         let path = r.uri().path();
-        w.body(format!("in 404 not found handler, path is: {}", path))
+        w.status(StatusCode::NOT_FOUND)
+            .body(format!("in 404 not found handler, path is: {}", path))
             .unwrap()
     }
 }

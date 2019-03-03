@@ -14,6 +14,8 @@ run the sample application:
 
 ```sh
 cargo run --example hello
+curl -i localhost:8080/hello
+curl -i localhost:8080/hi
 ```
 
 ## contribute
@@ -27,5 +29,6 @@ cargo clippy
 
 ## todo
 
-- [ ] request & response type
-- [ ] integrate tokio
+- [ ] follow `gorilla/mux` api
+- [ ] middleware
+- [ ] json example
