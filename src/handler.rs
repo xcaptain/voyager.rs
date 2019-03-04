@@ -2,7 +2,7 @@ use http::response::Builder;
 use http::{Request, Response};
 use std::sync::Arc;
 
-pub type HandlerFunc = Arc<Fn(&mut Builder, &Request<()>) -> Response<String> + Sync + Send>;
+pub type HandlerFunc = Arc<dyn Fn(&mut Builder, &Request<()>) -> Response<String> + Sync + Send>;
 
 #[derive(Clone)]
 pub struct Handler {
