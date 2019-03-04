@@ -2,10 +2,12 @@ use crate::handler::{Handler, HandlerFunc};
 use http::response::Builder;
 use http::{Request, Response, StatusCode};
 use std::collections::HashMap;
+use std::sync::Arc;
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct Mux {
     m: HashMap<String, MuxEntry>,
+    not_found_handler: Handler,
 }
 
 #[derive(Clone)]
@@ -16,7 +18,18 @@ struct MuxEntry {
 
 impl Mux {
     pub fn new() -> Self {
-        Mux { m: HashMap::new() }
+        let default_not_found_handler = Handler::new(Arc::new(
+            |w: &mut Builder, r: &Request<()>| -> Response<String> {
+                let path = r.uri().path();
+                w.status(StatusCode::NOT_FOUND)
+                    .body(format!("404 not found, path is: {}", path))
+                    .unwrap()
+            },
+        ));
+        Mux {
+            m: HashMap::new(),
+            not_found_handler: default_not_found_handler,
+        }
     }
 
     /// register router pattern
@@ -28,12 +41,18 @@ impl Mux {
         self.m.entry(pattern).or_insert(entry);
     }
 
+    /// just a piece of syntax sugar of `handle`
     pub fn handle_func(&mut self, pattern: String, handler: HandlerFunc) {
         let entry = MuxEntry {
             h: Handler::new(handler),
             pattern: pattern.clone(),
         };
         self.m.entry(pattern).or_insert(entry);
+    }
+
+    /// register custom not found handler
+    pub fn handle_not_found(&mut self, handler: Handler) {
+        self.not_found_handler = handler;
     }
 
     /// get handler from mux
@@ -46,17 +65,17 @@ impl Mux {
     }
 
     pub fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<String> {
+        // match router
         if let Some(handler) = self.handler(&r) {
             return handler.serve_http(w, r);
         }
-        self.serve_http_not_found(w, r)
+        self.not_found_handler.serve_http(w, r)
     }
+}
 
-    pub fn serve_http_not_found(&self, w: &mut Builder, r: &Request<()>) -> Response<String> {
-        let path = r.uri().path();
-        w.status(StatusCode::NOT_FOUND)
-            .body(format!("in 404 not found handler, path is: {}", path))
-            .unwrap()
+impl Default for Mux {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

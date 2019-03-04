@@ -13,9 +13,15 @@ fn main() -> Result<(), Box<std::error::Error>> {
         w.body(format!("in hello handler, path is: {}", path))
             .unwrap()
     };
+    let not_found_handler = |w: &mut Builder, r: &Request<()>| -> Response<String> {
+        let path = r.uri().path();
+        w.body(format!("page: {} has gone, please go to index page", path))
+            .unwrap()
+    };
     m.handle("/hello".to_string(), Handler::new(Arc::new(hello_handler)));
     m.handle("/world".to_string(), Handler::new(Arc::new(world_handler)));
     m.handle_func("/foo".to_string(), foo("dbconnection".to_string())); // inject dependence to handler
+    m.handle_not_found(Handler::new(Arc::new(not_found_handler)));
 
     return myhttp::listen_and_serve("127.0.0.1:8080".to_string(), m);
 }
