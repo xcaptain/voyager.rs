@@ -1,10 +1,8 @@
 use http::response::Builder;
 use http::{Request, Response};
-use std::sync::Arc;
 
-pub type HandlerFunc = Arc<dyn Fn(&mut Builder, &Request<()>) -> Response<String> + Sync + Send>;
+pub type HandlerFunc = Box<dyn Fn(&mut Builder, &Request<()>) -> Response<String> + Sync + Send>;
 
-#[derive(Clone)]
 pub struct Handler {
     f: HandlerFunc,
 }

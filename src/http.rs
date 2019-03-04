@@ -4,6 +4,7 @@ use chrono::prelude::*;
 use http::header::HeaderValue;
 use http::{Request, Response};
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::{fmt, io};
 use tokio::codec::{Decoder, Encoder};
 use tokio::net::{TcpListener, TcpStream};
@@ -12,19 +13,20 @@ use tokio::prelude::*;
 pub fn listen_and_serve(addr: String, m: Mux) -> Result<(), Box<std::error::Error>> {
     let addr = addr.parse::<SocketAddr>()?;
     let listener = TcpListener::bind(&addr)?;
+    let mm = Arc::new(m);
     tokio::run({
         listener
             .incoming()
             .map_err(|e| println!("failed to accept socket; error = {:?}", e))
             .for_each(move |socket| {
-                process(socket, m.clone());
+                process(socket, mm.clone());
                 Ok(())
             })
     });
     Ok(())
 }
 
-fn process(socket: TcpStream, m: Mux) {
+fn process(socket: TcpStream, m: Arc<Mux>) {
     let (tx, rx) =
         // Frame the socket using the `Http` protocol. This maps the TCP socket
         // to a Stream + Sink of HTTP frames.

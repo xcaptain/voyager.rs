@@ -2,15 +2,12 @@ use crate::handler::{Handler, HandlerFunc};
 use http::response::Builder;
 use http::{Request, Response, StatusCode};
 use std::collections::HashMap;
-use std::sync::Arc;
 
-#[derive(Clone)]
 pub struct Mux {
     m: HashMap<String, MuxEntry>,
     not_found_handler: Handler,
 }
 
-#[derive(Clone)]
 struct MuxEntry {
     h: Handler,
     pattern: String,
@@ -18,7 +15,7 @@ struct MuxEntry {
 
 impl Mux {
     pub fn new() -> Self {
-        let default_not_found_handler = Handler::new(Arc::new(
+        let default_not_found_handler = Handler::new(Box::new(
             |w: &mut Builder, r: &Request<()>| -> Response<String> {
                 let path = r.uri().path();
                 w.status(StatusCode::NOT_FOUND)

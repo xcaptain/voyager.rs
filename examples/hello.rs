@@ -1,6 +1,5 @@
 use http::response::Builder;
 use http::{Request, Response};
-use std::sync::Arc;
 use voyager::handler::{Handler, HandlerFunc};
 use voyager::http as myhttp;
 use voyager::mux::Mux;
@@ -18,10 +17,10 @@ fn main() -> Result<(), Box<std::error::Error>> {
         w.body(format!("page: {} has gone, please go to index page", path))
             .unwrap()
     };
-    m.handle("/hello".to_string(), Handler::new(Arc::new(hello_handler)));
-    m.handle("/world".to_string(), Handler::new(Arc::new(world_handler)));
+    m.handle("/hello".to_string(), Handler::new(Box::new(hello_handler)));
+    m.handle("/world".to_string(), Handler::new(Box::new(world_handler)));
     m.handle_func("/foo".to_string(), foo("dbconnection".to_string())); // inject dependence to handler
-    m.handle_not_found(Handler::new(Arc::new(not_found_handler)));
+    m.handle_not_found(Handler::new(Box::new(not_found_handler)));
 
     return myhttp::listen_and_serve("127.0.0.1:8080".to_string(), m);
 }
@@ -38,5 +37,5 @@ fn foo(db: String) -> HandlerFunc {
         w.body(format!("in foo handler, path is: {}, db is {}", path, db))
             .unwrap()
     };
-    Arc::new(foo_handler)
+    Box::new(foo_handler)
 }

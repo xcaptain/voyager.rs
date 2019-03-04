@@ -56,7 +56,7 @@ fn find_person(persons: Arc<Vec<Person>>) -> HandlerFunc {
                 .unwrap(),
         }
     };
-    Arc::new(handler)
+    Box::new(handler)
 }
 
 fn get_persons(persons: Arc<Vec<Person>>) -> HandlerFunc {
@@ -72,5 +72,5 @@ fn get_persons(persons: Arc<Vec<Person>>) -> HandlerFunc {
                 .unwrap(),
         }
     };
-    Arc::new(handler)
+    Box::new(handler)
 }
