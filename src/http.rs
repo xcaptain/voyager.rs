@@ -1,4 +1,4 @@
-use crate::mux::Mux;
+use crate::mux::Servable;
 use bytes::BytesMut;
 use chrono::prelude::*;
 use http::header::HeaderValue;
@@ -10,7 +10,7 @@ use tokio::codec::{Decoder, Encoder};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
 
-pub fn listen_and_serve(addr: String, m: Mux) -> Result<(), Box<std::error::Error>> {
+pub fn listen_and_serve(addr: String, m: impl Servable) -> Result<(), Box<std::error::Error>> {
     let addr = addr.parse::<SocketAddr>()?;
     let listener = TcpListener::bind(&addr)?;
     let mm = Arc::new(m);
@@ -26,7 +26,7 @@ pub fn listen_and_serve(addr: String, m: Mux) -> Result<(), Box<std::error::Erro
     Ok(())
 }
 
-fn process(socket: TcpStream, m: Arc<Mux>) {
+fn process(socket: TcpStream, m: Arc<impl Servable>) {
     let (tx, rx) =
         // Frame the socket using the `Http` protocol. This maps the TCP socket
         // to a Stream + Sink of HTTP frames.

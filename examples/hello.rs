@@ -1,11 +1,10 @@
 use http::response::Builder;
 use http::{Request, Response};
-use voyager::handler::{Handler, HandlerFunc};
 use voyager::http as myhttp;
-use voyager::mux::Mux;
+use voyager::mux::{DefaultMux, Handler, HandlerFunc};
 
 fn main() -> Result<(), Box<std::error::Error>> {
-    let mut m = Mux::new();
+    let mut m = DefaultMux::new();
 
     let hello_handler = |w: &mut Builder, r: &Request<()>| -> Response<String> {
         let path = r.uri().path();

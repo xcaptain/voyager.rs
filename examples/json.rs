@@ -2,12 +2,11 @@ use http::response::Builder;
 use http::{Request, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use voyager::handler::{Handler, HandlerFunc};
 use voyager::http as myhttp;
-use voyager::mux::Mux;
+use voyager::mux::{DefaultMux, Handler, HandlerFunc};
 
 fn main() -> Result<(), Box<std::error::Error>> {
-    let mut m = Mux::new();
+    let mut m = DefaultMux::new();
 
     // this object must be shared across threads, so must be wrapped
     // by Arc to keep thread safe

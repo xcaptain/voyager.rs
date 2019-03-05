@@ -1,9 +1,38 @@
-use crate::handler::{Handler, HandlerFunc};
 use http::response::Builder;
 use http::{Request, Response, StatusCode};
 use std::collections::HashMap;
 
-pub struct Mux {
+pub type HandlerFunc = Box<dyn Fn(&mut Builder, &Request<()>) -> Response<String> + Sync + Send>;
+pub struct Handler(HandlerFunc);
+
+/// this trait defines how to serve_http
+/// to use across multiple threads, this traits must implement Sync and Send
+/// because this trait must live longer then w, so add a `static lifetime
+pub trait Servable: Sync + Send + 'static {
+    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<String>;
+}
+
+impl Servable for HandlerFunc {
+    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<String> {
+        (self)(w, r)
+    }
+}
+
+impl Servable for Handler {
+    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<String> {
+        (self.0)(w, r)
+    }
+}
+
+impl Handler {
+    pub fn new(f: HandlerFunc) -> Self {
+        Handler(f)
+    }
+}
+
+/// the default mux for the framework, can be replaced as if the new object 
+/// implemented the Servable trait
+pub struct DefaultMux {
     m: HashMap<String, MuxEntry>,
     not_found_handler: Handler,
 }
@@ -13,7 +42,7 @@ struct MuxEntry {
     pattern: String,
 }
 
-impl Mux {
+impl DefaultMux {
     pub fn new() -> Self {
         let default_not_found_handler = Handler::new(Box::new(
             |w: &mut Builder, r: &Request<()>| -> Response<String> {
@@ -23,7 +52,7 @@ impl Mux {
                     .unwrap()
             },
         ));
-        Mux {
+        DefaultMux {
             m: HashMap::new(),
             not_found_handler: default_not_found_handler,
         }
@@ -60,32 +89,20 @@ impl Mux {
         }
         None
     }
-
-    pub fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<String> {
-        // match router
-        if let Some(handler) = self.handler(&r) {
-            return handler.serve_http(w, r);
-        }
-        self.not_found_handler.serve_http(w, r)
-    }
 }
 
-impl Default for Mux {
+impl Default for DefaultMux {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_mux() {
-        let mut mux = Mux::new();
-        let handler = Handler::new();
-
-        mux.handle("/hello".to_string(), handler);
-        assert_eq!(1, 1);
+impl Servable for DefaultMux {
+    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<String> {
+        // match router
+        if let Some(handler) = self.handler(&r) {
+            return handler.serve_http(w, r);
+        }
+        self.not_found_handler.serve_http(w, r)
     }
 }
