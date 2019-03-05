@@ -21,7 +21,10 @@ fn main() -> Result<(), Box<std::error::Error>> {
         DefaultHandler::new(Box::new(hello_handler)),
     );
     m.handle_func("/world".to_string(), Box::new(world_handler));
-    m.handle_func("/foo".to_string(), foo("dbconnection".to_string())); // inject dependence to handler
+    m.handle_func(
+        "/foo".to_string(),
+        logging_middleware(foo("dbconnection".to_string())),
+    ); // inject dependence to handler
     m.handle_not_found(DefaultHandler::new(Box::new(not_found_handler)));
 
     return myhttp::listen_and_serve("127.0.0.1:8080".to_string(), m);
@@ -40,4 +43,15 @@ fn foo(db: String) -> HandlerFunc {
             .unwrap()
     };
     Box::new(foo_handler)
+}
+
+fn logging_middleware(f: HandlerFunc) -> HandlerFunc {
+    let result = Box::new(
+        move |w: &mut Builder, r: &Request<()>| -> Response<String> {
+            println!("request start");
+            f(w, r)
+        },
+    );
+
+    return result;
 }

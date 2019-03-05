@@ -38,7 +38,7 @@ cargo clippy
 ## todo
 
 - [ ] implement `gorilla/mux` api
-- [ ] middleware
+- [x] middleware
 - [x] json example [see](./examples/json.rs)
 - [ ] a database example
 - [ ] static file serving
