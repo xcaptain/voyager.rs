@@ -3,48 +3,50 @@ use http::{Request, Response, StatusCode};
 use std::collections::HashMap;
 
 pub type HandlerFunc = Box<dyn Fn(&mut Builder, &Request<()>) -> Response<String> + Sync + Send>;
-pub struct Handler(HandlerFunc);
-
 /// this trait defines how to serve_http
 /// to use across multiple threads, this traits must implement Sync and Send
 /// because this trait must live longer then w, so add a `static lifetime
-pub trait Servable: Sync + Send + 'static {
+pub trait Handler: Sync + Send + 'static {
     fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<String>;
 }
 
-impl Servable for HandlerFunc {
+impl Handler for HandlerFunc {
     fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<String> {
         (self)(w, r)
     }
 }
 
-impl Servable for Handler {
+/// default http handler struct used by the default mux implementation
+pub struct DefaultHandler(HandlerFunc);
+
+impl Handler for DefaultHandler {
     fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<String> {
         (self.0)(w, r)
     }
 }
 
-impl Handler {
+impl DefaultHandler {
     pub fn new(f: HandlerFunc) -> Self {
-        Handler(f)
+        DefaultHandler(f)
     }
 }
 
-/// the default mux for the framework, can be replaced as if the new object 
-/// implemented the Servable trait
+/// the default mux for the framework, can be replaced as if the new object
+/// implemented the Handler trait, this default implementation will follow
+/// `gorilla/mux`'s api design
 pub struct DefaultMux {
     m: HashMap<String, MuxEntry>,
-    not_found_handler: Handler,
+    not_found_handler: DefaultHandler,
 }
 
 struct MuxEntry {
-    h: Handler,
+    h: DefaultHandler,
     pattern: String,
 }
 
 impl DefaultMux {
     pub fn new() -> Self {
-        let default_not_found_handler = Handler::new(Box::new(
+        let default_not_found_handler = DefaultHandler::new(Box::new(
             |w: &mut Builder, r: &Request<()>| -> Response<String> {
                 let path = r.uri().path();
                 w.status(StatusCode::NOT_FOUND)
@@ -59,7 +61,7 @@ impl DefaultMux {
     }
 
     /// register router pattern
-    pub fn handle(&mut self, pattern: String, handler: Handler) {
+    pub fn handle(&mut self, pattern: String, handler: DefaultHandler) {
         let entry = MuxEntry {
             h: handler,
             pattern: pattern.clone(),
@@ -70,19 +72,19 @@ impl DefaultMux {
     /// just a piece of syntax sugar of `handle`
     pub fn handle_func(&mut self, pattern: String, handler: HandlerFunc) {
         let entry = MuxEntry {
-            h: Handler::new(handler),
+            h: DefaultHandler::new(handler),
             pattern: pattern.clone(),
         };
         self.m.entry(pattern).or_insert(entry);
     }
 
     /// register custom not found handler
-    pub fn handle_not_found(&mut self, handler: Handler) {
+    pub fn handle_not_found(&mut self, handler: DefaultHandler) {
         self.not_found_handler = handler;
     }
 
     /// get handler from mux
-    pub fn handler(&self, r: &Request<()>) -> Option<&Handler> {
+    pub fn handler(&self, r: &Request<()>) -> Option<&DefaultHandler> {
         let path = r.uri().path().to_owned();
         if let Some(entry) = self.m.get(&path) {
             return Some(&entry.h);
@@ -97,7 +99,7 @@ impl Default for DefaultMux {
     }
 }
 
-impl Servable for DefaultMux {
+impl Handler for DefaultMux {
     fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<String> {
         // match router
         if let Some(handler) = self.handler(&r) {

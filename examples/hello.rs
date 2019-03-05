@@ -1,7 +1,7 @@
 use http::response::Builder;
 use http::{Request, Response};
 use voyager::http as myhttp;
-use voyager::mux::{DefaultMux, Handler, HandlerFunc};
+use voyager::mux::{DefaultHandler, DefaultMux, HandlerFunc};
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let mut m = DefaultMux::new();
@@ -16,10 +16,13 @@ fn main() -> Result<(), Box<std::error::Error>> {
         w.body(format!("page: {} has gone, please go to index page", path))
             .unwrap()
     };
-    m.handle("/hello".to_string(), Handler::new(Box::new(hello_handler)));
-    m.handle("/world".to_string(), Handler::new(Box::new(world_handler)));
+    m.handle(
+        "/hello".to_string(),
+        DefaultHandler::new(Box::new(hello_handler)),
+    );
+    m.handle_func("/world".to_string(), Box::new(world_handler));
     m.handle_func("/foo".to_string(), foo("dbconnection".to_string())); // inject dependence to handler
-    m.handle_not_found(Handler::new(Box::new(not_found_handler)));
+    m.handle_not_found(DefaultHandler::new(Box::new(not_found_handler)));
 
     return myhttp::listen_and_serve("127.0.0.1:8080".to_string(), m);
 }

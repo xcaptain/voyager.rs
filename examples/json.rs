@@ -3,7 +3,7 @@ use http::{Request, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use voyager::http as myhttp;
-use voyager::mux::{DefaultMux, Handler, HandlerFunc};
+use voyager::mux::{DefaultHandler, DefaultMux, HandlerFunc};
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let mut m = DefaultMux::new();
@@ -24,11 +24,11 @@ fn main() -> Result<(), Box<std::error::Error>> {
     ]);
     m.handle(
         "/person".to_string(),
-        Handler::new(find_person(persons.clone())),
+        DefaultHandler::new(find_person(persons.clone())),
     );
     m.handle(
         "/persons".to_string(),
-        Handler::new(get_persons(persons.clone())),
+        DefaultHandler::new(get_persons(persons.clone())),
     );
 
     return myhttp::listen_and_serve("127.0.0.1:8080".to_string(), m);
