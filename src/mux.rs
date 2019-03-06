@@ -33,7 +33,7 @@ impl DefaultHandler {
 
 /// the default mux for the framework, can be replaced as if the new object
 /// implemented the Handler trait, this default implementation will follow
-/// `gorilla/mux`'s api design
+/// `go-chi/chi`'s api design
 pub struct DefaultMux {
     m: HashMap<String, MuxEntry>,
     not_found_handler: DefaultHandler,
@@ -41,7 +41,6 @@ pub struct DefaultMux {
 
 struct MuxEntry {
     h: DefaultHandler,
-    pattern: String,
 }
 
 impl DefaultMux {
@@ -64,7 +63,6 @@ impl DefaultMux {
     pub fn handle(&mut self, pattern: String, handler: DefaultHandler) {
         let entry = MuxEntry {
             h: handler,
-            pattern: pattern.clone(),
         };
         self.m.entry(pattern).or_insert(entry);
     }
@@ -73,7 +71,6 @@ impl DefaultMux {
     pub fn handle_func(&mut self, pattern: String, handler: HandlerFunc) {
         let entry = MuxEntry {
             h: DefaultHandler::new(handler),
-            pattern: pattern.clone(),
         };
         self.m.entry(pattern).or_insert(entry);
     }

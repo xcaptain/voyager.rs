@@ -21,8 +21,8 @@ curl -i localhost:8080/hi
 ## architecture
 
 1. `http.listen_and_serve` setup http server and bind a `mux` to the server so each incoming request can be dispatched
-2. `mux` is a collection of `handler`s, this module register `handler` and resolve `handler` from each request
-3. a `Handler` is in fact a closure, it accepts a `RequestBuilder` and a `Request` as arguments and returns a `Response`
+2. `mux` register request handler and resolve handler from request
+3. `Handler` is a trait that implement `serve_http` method. every object must implement this trait to handle requests.
 
 Because `tokio` works on multiple threads, so every shared data must be wrapped by `Arc`.
 
@@ -37,7 +37,7 @@ cargo clippy
 
 ## todo
 
-- [ ] implement `gorilla/mux` api
+- [ ] implement `go-chi/chi` api as the default mux
 - [x] middleware
 - [x] json example [see](./examples/json.rs)
 - [ ] a database example
