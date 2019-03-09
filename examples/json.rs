@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use http::response::Builder;
 use http::{Request, Response, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -42,16 +43,16 @@ struct Person {
 }
 
 fn find_person(persons: Arc<Vec<Person>>) -> HandlerFunc {
-    let handler = move |w: &mut Builder, _r: &Request<()>| -> Response<String> {
+    let handler = move |w: &mut Builder, _r: &Request<()>| -> Response<Bytes> {
         let person = &persons[0];
-        match serde_json::to_string(&person) {
+        match serde_json::to_vec(&person) {
             Ok(body) => w
                 .header("Content-Type", "application/json")
-                .body(body)
+                .body(Bytes::from(body))
                 .unwrap(),
             Err(e) => w
                 .status(StatusCode::BAD_REQUEST)
-                .body(format!("serialize failed, {}", e))
+                .body(Bytes::from(format!("serialize failed, {}", e)))
                 .unwrap(),
         }
     };
@@ -59,15 +60,15 @@ fn find_person(persons: Arc<Vec<Person>>) -> HandlerFunc {
 }
 
 fn get_persons(persons: Arc<Vec<Person>>) -> HandlerFunc {
-    let handler = move |w: &mut Builder, _r: &Request<()>| -> Response<String> {
-        match serde_json::to_string(&persons) {
+    let handler = move |w: &mut Builder, _r: &Request<()>| -> Response<Bytes> {
+        match serde_json::to_vec(&persons) {
             Ok(body) => w
                 .header("Content-Type", "application/json")
-                .body(body)
+                .body(Bytes::from(body))
                 .unwrap(),
             Err(e) => w
                 .status(StatusCode::BAD_REQUEST)
-                .body(format!("serialize failed, {}", e))
+                .body(Bytes::from(format!("serialize failed, {}", e)))
                 .unwrap(),
         }
     };

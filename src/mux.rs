@@ -1,17 +1,18 @@
+use bytes::Bytes;
 use http::response::Builder;
 use http::{Request, Response, StatusCode};
 use std::collections::HashMap;
 
-pub type HandlerFunc = Box<dyn Fn(&mut Builder, &Request<()>) -> Response<String> + Sync + Send>;
+pub type HandlerFunc = Box<dyn Fn(&mut Builder, &Request<()>) -> Response<Bytes> + Sync + Send>;
 /// this trait defines how to serve_http
 /// to use across multiple threads, this traits must implement Sync and Send
 /// because this trait must live longer then w, so add a `static lifetime
 pub trait Handler: Sync + Send + 'static {
-    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<String>;
+    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<Bytes>;
 }
 
 impl Handler for HandlerFunc {
-    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<String> {
+    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<Bytes> {
         (self)(w, r)
     }
 }
@@ -20,7 +21,7 @@ impl Handler for HandlerFunc {
 pub struct DefaultHandler(HandlerFunc);
 
 impl Handler for DefaultHandler {
-    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<String> {
+    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<Bytes> {
         (self.0)(w, r)
     }
 }
@@ -46,10 +47,11 @@ struct MuxEntry {
 impl DefaultMux {
     pub fn new() -> Self {
         let default_not_found_handler = DefaultHandler::new(Box::new(
-            |w: &mut Builder, r: &Request<()>| -> Response<String> {
+            |w: &mut Builder, r: &Request<()>| -> Response<Bytes> {
                 let path = r.uri().path();
+                let str_response = format!("404 not found, path is: {}", path.clone());
                 w.status(StatusCode::NOT_FOUND)
-                    .body(format!("404 not found, path is: {}", path))
+                    .body(Bytes::from(str_response))
                     .unwrap()
             },
         ));
@@ -61,9 +63,7 @@ impl DefaultMux {
 
     /// register router pattern
     pub fn handle(&mut self, pattern: String, handler: DefaultHandler) {
-        let entry = MuxEntry {
-            h: handler,
-        };
+        let entry = MuxEntry { h: handler };
         self.m.entry(pattern).or_insert(entry);
     }
 
@@ -97,7 +97,7 @@ impl Default for DefaultMux {
 }
 
 impl Handler for DefaultMux {
-    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<String> {
+    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<Bytes> {
         // match router
         if let Some(handler) = self.handler(&r) {
             return handler.serve_http(w, r);

@@ -1,5 +1,5 @@
 use crate::mux::Handler;
-use bytes::BytesMut;
+use bytes::{Bytes, BytesMut};
 use chrono::prelude::*;
 use http::header::HeaderValue;
 use http::{Request, Response};
@@ -38,7 +38,7 @@ fn process(socket: TcpStream, m: Arc<impl Handler>) {
     // Map all requests into responses and send them back to the client.
     let task = tx
         .send_all(rx.and_then(
-            move |req| -> Box<Future<Item = Response<String>, Error = io::Error> + Send> {
+            move |req| -> Box<Future<Item = Response<Bytes>, Error = io::Error> + Send> {
                 let mm = m.clone();
                 let f = future::lazy(move || {
                     let mut response_builder = Response::builder();
@@ -67,10 +67,10 @@ struct Http;
 /// Implementation of encoding an HTTP response into a `BytesMut`, basically
 /// just writing out an HTTP/1.1 response.
 impl Encoder for Http {
-    type Item = Response<String>;
+    type Item = Response<Bytes>;
     type Error = io::Error;
 
-    fn encode(&mut self, item: Response<String>, dst: &mut BytesMut) -> io::Result<()> {
+    fn encode(&mut self, item: Response<Bytes>, dst: &mut BytesMut) -> io::Result<()> {
         use std::fmt::Write;
 
         let local: DateTime<Local> = Local::now();
@@ -96,7 +96,7 @@ impl Encoder for Http {
         }
 
         dst.extend_from_slice(b"\r\n");
-        dst.extend_from_slice(item.body().as_bytes());
+        dst.extend_from_slice(item.body());
 
         return Ok(());
 
