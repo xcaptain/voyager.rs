@@ -2,6 +2,8 @@ use http::response::Builder;
 use http::{Request, Response};
 use voyager::http as myhttp;
 use voyager::mux::{DefaultHandler, DefaultMux, HandlerFunc};
+use chrono::prelude::Local;
+use std::{thread, time};
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let mut m = DefaultMux::new();
@@ -39,6 +41,7 @@ fn world_handler(w: &mut Builder, r: &Request<()>) -> Response<String> {
 fn foo(db: String) -> HandlerFunc {
     let foo_handler = move |w: &mut Builder, r: &Request<()>| -> Response<String> {
         let path = r.uri().path();
+        thread::sleep(time::Duration::from_secs(3));
         w.body(format!("in foo handler, path is: {}, db is {}", path, db))
             .unwrap()
     };
@@ -48,8 +51,10 @@ fn foo(db: String) -> HandlerFunc {
 fn logging_middleware(f: HandlerFunc) -> HandlerFunc {
     let result = Box::new(
         move |w: &mut Builder, r: &Request<()>| -> Response<String> {
-            println!("request start");
-            f(w, r)
+            println!("request start: {}", Local::now());
+            let resp = f(w, r);
+            println!("request ends: {}", Local::now());
+            return resp;
         },
     );
 
