@@ -17,27 +17,29 @@ impl Handler for HandlerFunc {
     }
 }
 
+// TODO: figure out use Box<Handler> or Box<dyn Handler>?
 /// the default mux for the framework, can be replaced as if the new object
 /// implemented the Handler trait, this default implementation will follow
 /// `go-chi/chi`'s api design
 pub struct DefaultMux {
     m: HashMap<String, MuxEntry>,
-    not_found_handler: HandlerFunc,
+    not_found_handler: Box<Handler>,
 }
 
 struct MuxEntry {
-    h: HandlerFunc,
+    h: Box<Handler>,
 }
 
 impl DefaultMux {
     pub fn new() -> Self {
-        let notfound = |w: &mut Builder, r: &Request<()>| -> Response<Bytes> {
-            let path = r.uri().path();
-            let str_response = format!("404 not found, path is: {}", path.clone());
-            w.status(StatusCode::NOT_FOUND)
-                .body(Bytes::from(str_response))
-                .unwrap()
-        };
+        let notfound: HandlerFunc =
+            Box::new(|w: &mut Builder, r: &Request<()>| -> Response<Bytes> {
+                let path = r.uri().path();
+                let str_response = format!("404 not found, path is: {}", path);
+                w.status(StatusCode::NOT_FOUND)
+                    .body(Bytes::from(str_response))
+                    .unwrap()
+            });
         DefaultMux {
             m: HashMap::new(),
             not_found_handler: Box::new(notfound),
@@ -47,27 +49,27 @@ impl DefaultMux {
     /// register http handler
     pub fn handle_func(&mut self, pattern: String, handler: HandlerFunc) {
         let entry = MuxEntry {
-            h: handler,
+            h: Box::new(handler),
         };
         self.m.entry(pattern).or_insert(entry);
     }
 
     /// what the fuck, why rust doesn't support `handler.serve_http` as a closure
-    // pub fn handle(&mut self, pattern: String, handler: impl Handler) {
-    //     let new_handler: HandlerFunc = Box::new(handler.serve_http);
-    //     self.handle_func(pattern, new_handler);
-    // }
+    pub fn handle(&mut self, pattern: String, handler: Box<Handler>) {
+        let entry = MuxEntry { h: handler };
+        self.m.entry(pattern).or_insert(entry);
+    }
 
     /// register custom not found handler
     pub fn handle_not_found(&mut self, handler: HandlerFunc) {
-        self.not_found_handler = handler;
+        self.not_found_handler = Box::new(handler);
     }
 
     /// get handler from mux
-    pub fn handler(&self, r: &Request<()>) -> Option<&HandlerFunc> {
+    pub fn handler(&self, r: &Request<()>) -> Option<&Handler> {
         let path = r.uri().path().to_owned();
         if let Some(entry) = self.m.get(&path) {
-            return Some(&entry.h);
+            return Some(&*entry.h);
         }
         None
     }

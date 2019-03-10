@@ -18,8 +18,8 @@ fn main() -> Result<(), Box<std::error::Error>> {
             let str_response = format!("page: {} has gone, please go to index page", path);
             w.body(Bytes::from(str_response)).unwrap()
         });
-    m.handle_func("/hello".to_string(), Box::new(hello_handler));
-    m.handle_func("/world".to_string(), Box::new(world_handler));
+    m.handle("/hello".to_string(), Box::new(HelloHandler::new()));
+    m.handle("/world".to_string(), Box::new(WorldHandler::new()));
     m.handle_func(
         "/foo".to_string(),
         logging_middleware(foo("dbconnection".to_string())),
@@ -28,18 +28,6 @@ fn main() -> Result<(), Box<std::error::Error>> {
     m.handle_not_found(not_found_handler);
 
     return myhttp::listen_and_serve("127.0.0.1:8080".to_string(), m);
-}
-
-fn hello_handler(w: &mut Builder, r: &Request<()>) -> Response<Bytes> {
-    let path = r.uri().path();
-    let str_response = format!("in hello handler, path is: {}", path);
-    w.body(Bytes::from(str_response)).unwrap()
-}
-
-fn world_handler(w: &mut Builder, r: &Request<()>) -> Response<Bytes> {
-    let path = r.uri().path();
-    let str_response = format!("in world handler, path is: {}", path);
-    w.body(Bytes::from(str_response)).unwrap()
 }
 
 fn foo(db: String) -> HandlerFunc {
@@ -85,4 +73,32 @@ fn logging_middleware(f: HandlerFunc) -> HandlerFunc {
     });
 
     return result;
+}
+
+struct HelloHandler();
+impl HelloHandler {
+    pub fn new() -> Self {
+        HelloHandler()
+    }
+}
+impl Handler for HelloHandler {
+    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<Bytes> {
+        let path = r.uri().path();
+        let str_response = format!("in hello handler, path is: {}", path);
+        w.body(Bytes::from(str_response)).unwrap()
+    }
+}
+
+struct WorldHandler {}
+impl WorldHandler {
+    pub fn new() -> Self {
+        WorldHandler {}
+    }
+}
+impl Handler for WorldHandler {
+    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<Bytes> {
+        let path = r.uri().path();
+        let str_response = format!("in world handler, path is: {}", path);
+        w.body(Bytes::from(str_response)).unwrap()
+    }
 }
