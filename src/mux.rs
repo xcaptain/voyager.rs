@@ -66,7 +66,7 @@ impl DefaultMux {
     }
 
     /// get handler from mux
-    pub fn handler(&self, r: &Request<()>) -> Option<&Handler> {
+    fn handler(&self, r: &Request<()>) -> Option<&Handler> {
         let path = r.uri().path().to_owned();
         if let Some(entry) = self.m.get(&path) {
             return Some(&*entry.h);
