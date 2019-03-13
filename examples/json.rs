@@ -4,7 +4,8 @@ use http::{Request, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use voyager::http as myhttp;
-use voyager::mux::{DefaultMux, HandlerFunc};
+use voyager::http::HandlerFunc;
+use voyager::mux::DefaultMux;
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let mut m = DefaultMux::new();

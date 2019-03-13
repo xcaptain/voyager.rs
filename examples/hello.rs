@@ -7,7 +7,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::{thread, time};
 use voyager::http as myhttp;
-use voyager::mux::{DefaultMux, Handler, HandlerFunc};
+use voyager::http::{strip_prefix, Handler, HandlerFunc};
+use voyager::mux::DefaultMux;
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let mut m = DefaultMux::new();
@@ -20,6 +21,15 @@ fn main() -> Result<(), Box<std::error::Error>> {
         });
     m.handle("/hello".to_string(), Box::new(HelloHandler::new()));
     m.handle("/world".to_string(), Box::new(WorldHandler::new()));
+    let ab_handler: HandlerFunc = Box::new(|w: &mut Builder, r: &Request<()>| -> Response<Bytes> {
+        let path = r.uri().path();
+        let str_response = format!("test strip path, path is {}", path);
+        w.body(Bytes::from(str_response)).unwrap()
+    });
+    m.handle(
+        "/a/b".to_string(),
+        strip_prefix("a".to_string(), Box::new(ab_handler)),
+    );
     m.handle_func(
         "/foo".to_string(),
         logging_middleware(foo("dbconnection".to_string())),

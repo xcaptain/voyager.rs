@@ -1,190 +1,36 @@
-use crate::mux::Handler;
-use bytes::{Bytes, BytesMut};
-use chrono::prelude::*;
-use http::header::HeaderValue;
+use bytes::Bytes;
+use http::response::Builder;
 use http::{Request, Response};
-use std::net::SocketAddr;
-use std::sync::Arc;
-use std::{fmt, io};
-use tokio::codec::{Decoder, Encoder};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::prelude::*;
 
-pub fn listen_and_serve(addr: String, m: impl Handler) -> Result<(), Box<std::error::Error>> {
-    let addr = addr.parse::<SocketAddr>()?;
-    let listener = TcpListener::bind(&addr)?;
-    let mm = Arc::new(m);
-    tokio::run({
-        listener
-            .incoming()
-            .map_err(|e| println!("failed to accept socket; error = {:?}", e))
-            .for_each(move |socket| {
-                process(socket, mm.clone());
-                Ok(())
-            })
-    });
-    Ok(())
+pub use crate::server::listen_and_serve;
+
+pub type HandlerFunc = Box<dyn Fn(&mut Builder, &Request<()>) -> Response<Bytes> + Sync + Send>;
+/// this trait defines how to serve_http
+/// to use across multiple threads, this traits must implement Sync and Send
+/// because this trait must live longer then w, so add a `static lifetime
+pub trait Handler: Sync + Send + 'static {
+    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<Bytes>;
 }
 
-fn process(socket: TcpStream, m: Arc<impl Handler>) {
-    let (tx, rx) =
-        // Frame the socket using the `Http` protocol. This maps the TCP socket
-        // to a Stream + Sink of HTTP frames.
-        Http.framed(socket)
-        // This splits a single `Stream + Sink` value into two separate handles
-        // that can be used independently (even on different tasks or threads).
-        .split();
+impl Handler for HandlerFunc {
+    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<Bytes> {
+        (self)(w, r)
+    }
+}
 
-    // Map all requests into responses and send them back to the client.
-    let task = tx
-        .send_all(rx.and_then(
-            move |req| -> Box<Future<Item = Response<Bytes>, Error = io::Error> + Send> {
-                let mm = m.clone();
-                let f = future::lazy(move || {
-                    let mut response_builder = Response::builder();
-                    let response = mm.serve_http(&mut response_builder, &req);
-                    Ok(response)
-                });
-
-                Box::new(f)
-            },
-        ))
-        .then(|res| {
-            if let Err(e) = res {
-                println!("failed to process connection; error = {:?}", e);
-            }
-
-            Ok(())
+pub fn strip_prefix(prefix: String, h: Box<dyn Handler>) -> Box<dyn Handler> {
+    if prefix.is_empty() {
+        return h;
+    }
+    // restruct uri path and create a new request instance
+    // TODO: must be carefully revised to ensure just prefix has been trimed
+    let handler: HandlerFunc =
+        Box::new(move |w: &mut Builder, r: &Request<()>| -> Response<Bytes> {
+            // let (mut parts, body) = r.into_parts();
+            // parts.uri = Uri::builder().build().unwrap();
+            // let new_r = Request::from_parts(parts, body);
+            // `http` crate is so difficult to use, fuck
+            h.serve_http(w, r)
         });
-
-    // Spawn the task that handles the connection.
-    tokio::spawn(task);
-}
-
-// code below is copied from `tokio tinyhttp example`
-struct Http;
-
-/// Implementation of encoding an HTTP response into a `BytesMut`, basically
-/// just writing out an HTTP/1.1 response.
-impl Encoder for Http {
-    type Item = Response<Bytes>;
-    type Error = io::Error;
-
-    fn encode(&mut self, item: Response<Bytes>, dst: &mut BytesMut) -> io::Result<()> {
-        use std::fmt::Write;
-
-        let local: DateTime<Local> = Local::now();
-        write!(
-            BytesWrite(dst),
-            "\
-             HTTP/1.1 {}\r\n\
-             Server: Example\r\n\
-             Content-Length: {}\r\n\
-             Date: {}\r\n\
-             ",
-            item.status(),
-            item.body().len(),
-            local.to_rfc2822(),
-        )
-        .unwrap();
-
-        for (k, v) in item.headers() {
-            dst.extend_from_slice(k.as_str().as_bytes());
-            dst.extend_from_slice(b": ");
-            dst.extend_from_slice(v.as_bytes());
-            dst.extend_from_slice(b"\r\n");
-        }
-
-        dst.extend_from_slice(b"\r\n");
-        dst.extend_from_slice(item.body());
-
-        return Ok(());
-
-        // Right now `write!` on `Vec<u8>` goes through io::Write and is not
-        // super speedy, so inline a less-crufty implementation here which
-        // doesn't go through io::Error.
-        struct BytesWrite<'a>(&'a mut BytesMut);
-
-        impl<'a> fmt::Write for BytesWrite<'a> {
-            fn write_str(&mut self, s: &str) -> fmt::Result {
-                self.0.extend_from_slice(s.as_bytes());
-                Ok(())
-            }
-
-            fn write_fmt(&mut self, args: fmt::Arguments) -> fmt::Result {
-                fmt::write(self, args)
-            }
-        }
-    }
-}
-
-/// Implementation of decoding an HTTP request from the bytes we've read so far.
-/// This leverages the `httparse` crate to do the actual parsing and then we use
-/// that information to construct an instance of a `http::Request` object,
-/// trying to avoid allocations where possible.
-impl Decoder for Http {
-    type Item = Request<()>;
-    type Error = io::Error;
-
-    fn decode(&mut self, src: &mut BytesMut) -> io::Result<Option<Request<()>>> {
-        // TODO: we should grow this headers array if parsing fails and asks
-        //       for more headers
-        let mut headers = [None; 16];
-        let (method, path, version, amt) = {
-            let mut parsed_headers = [httparse::EMPTY_HEADER; 16];
-            let mut r = httparse::Request::new(&mut parsed_headers);
-            let status = r.parse(src).map_err(|e| {
-                let msg = format!("failed to parse http request: {:?}", e);
-                io::Error::new(io::ErrorKind::Other, msg)
-            })?;
-
-            let amt = match status {
-                httparse::Status::Complete(amt) => amt,
-                httparse::Status::Partial => return Ok(None),
-            };
-
-            let toslice = |a: &[u8]| {
-                let start = a.as_ptr() as usize - src.as_ptr() as usize;
-                assert!(start < src.len());
-                (start, start + a.len())
-            };
-
-            for (i, header) in r.headers.iter().enumerate() {
-                let k = toslice(header.name.as_bytes());
-                let v = toslice(header.value);
-                headers[i] = Some((k, v));
-            }
-
-            (
-                toslice(r.method.unwrap().as_bytes()),
-                toslice(r.path.unwrap().as_bytes()),
-                r.version.unwrap(),
-                amt,
-            )
-        };
-        if version != 1 {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "only HTTP/1.1 accepted",
-            ));
-        }
-        let data = src.split_to(amt).freeze();
-        let mut ret = Request::builder();
-        ret.method(&data[method.0..method.1]);
-        ret.uri(data.slice(path.0, path.1));
-        ret.version(http::Version::HTTP_11);
-        for header in headers.iter() {
-            let (k, v) = match *header {
-                Some((ref k, ref v)) => (k, v),
-                None => break,
-            };
-            let value = unsafe { HeaderValue::from_shared_unchecked(data.slice(v.0, v.1)) };
-            ret.header(&data[k.0..k.1], value);
-        }
-
-        let req = ret
-            .body(())
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-        Ok(Some(req))
-    }
+    Box::new(handler)
 }

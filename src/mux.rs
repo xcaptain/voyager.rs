@@ -1,21 +1,8 @@
+use crate::http::{Handler, HandlerFunc};
 use bytes::Bytes;
 use http::response::Builder;
 use http::{Request, Response, StatusCode};
 use std::collections::HashMap;
-
-pub type HandlerFunc = Box<dyn Fn(&mut Builder, &Request<()>) -> Response<Bytes> + Sync + Send>;
-/// this trait defines how to serve_http
-/// to use across multiple threads, this traits must implement Sync and Send
-/// because this trait must live longer then w, so add a `static lifetime
-pub trait Handler: Sync + Send + 'static {
-    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<Bytes>;
-}
-
-impl Handler for HandlerFunc {
-    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<Bytes> {
-        (self)(w, r)
-    }
-}
 
 // TODO: figure out use Box<Handler> or Box<dyn Handler>?
 /// the default mux for the framework, can be replaced as if the new object
