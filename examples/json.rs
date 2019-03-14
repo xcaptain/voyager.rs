@@ -6,6 +6,7 @@ use std::sync::Arc;
 use voyager::http as myhttp;
 use voyager::http::HandlerFunc;
 use voyager::mux::DefaultMux;
+use voyager::server::DefaultServer;
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let mut m = DefaultMux::new();
@@ -27,7 +28,10 @@ fn main() -> Result<(), Box<std::error::Error>> {
     m.handle_func("/person".to_string(), find_person(persons.clone()));
     m.handle_func("/persons".to_string(), get_persons(persons.clone()));
 
-    return myhttp::listen_and_serve("127.0.0.1:8080".to_string(), m);
+    return myhttp::listen_and_serve(DefaultServer::new(
+        "127.0.0.1:8080".to_string(),
+        Box::new(m),
+    ));
 }
 
 #[derive(Serialize, Deserialize)]

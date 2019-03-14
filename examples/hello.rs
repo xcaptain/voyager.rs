@@ -9,6 +9,7 @@ use std::{thread, time};
 use voyager::http as myhttp;
 use voyager::http::{strip_prefix, Handler, HandlerFunc};
 use voyager::mux::DefaultMux;
+use voyager::server::DefaultServer;
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let mut m = DefaultMux::new();
@@ -37,7 +38,10 @@ fn main() -> Result<(), Box<std::error::Error>> {
     m.handle_func("/test.png".to_string(), file_handler());
     m.handle_not_found(not_found_handler);
 
-    return myhttp::listen_and_serve("127.0.0.1:8080".to_string(), m);
+    return myhttp::listen_and_serve(DefaultServer::new(
+        "127.0.0.1:8080".to_string(),
+        Box::new(m),
+    ));
 }
 
 fn foo(db: String) -> HandlerFunc {

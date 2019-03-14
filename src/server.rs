@@ -10,25 +10,45 @@ use tokio::codec::{Decoder, Encoder};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
 
-/// listen to the address and serve requests
-/// addr is a string like: 127.0.0.1:8080
-pub fn listen_and_serve(addr: String, m: impl Handler) -> Result<(), Box<std::error::Error>> {
-    let addr = addr.parse::<SocketAddr>()?;
-    let listener = TcpListener::bind(&addr)?;
-    let mm = Arc::new(m);
-    tokio::run({
-        listener
-            .incoming()
-            .map_err(|e| println!("failed to accept socket; error = {:?}", e))
-            .for_each(move |socket| {
-                process(socket, mm.clone());
-                Ok(())
-            })
-    });
-    Ok(())
+/// pass in a server and run the server
+pub fn listen_and_serve(server: impl Server) -> Result<(), Box<std::error::Error>> {
+    server.run()
 }
 
-pub fn process(socket: TcpStream, m: Arc<impl Handler>) {
+/// http server trait, may be different backend implementation
+/// e.g tokio, raw tcp socket, quic, http2 and so on
+pub trait Server {
+    fn run(self) -> Result<(), Box<std::error::Error>>;
+}
+
+pub struct DefaultServer {
+    addr: String,
+    m: Box<dyn Handler>,
+}
+impl DefaultServer {
+    pub fn new(addr: String, m: Box<dyn Handler>) -> Self {
+        DefaultServer { addr, m }
+    }
+}
+impl Server for DefaultServer {
+    fn run(self) -> Result<(), Box<std::error::Error>> {
+        let addr = self.addr.parse::<SocketAddr>()?;
+        let listener = TcpListener::bind(&addr)?;
+        let mm = Arc::new(self.m);
+        tokio::run({
+            listener
+                .incoming()
+                .map_err(|e| println!("failed to accept socket; error = {:?}", e))
+                .for_each(move |socket| {
+                    process(socket, mm.clone());
+                    Ok(())
+                })
+        });
+        Ok(())
+    }
+}
+
+fn process(socket: TcpStream, m: Arc<Box<dyn Handler>>) {
     let (tx, rx) =
         // Frame the socket using the `Http` protocol. This maps the TCP socket
         // to a Stream + Sink of HTTP frames.
