@@ -42,7 +42,7 @@ struct Person {
 }
 
 fn find_person(persons: Arc<Vec<Person>>) -> HandlerFunc {
-    let handler = move |w: &mut Builder, _r: &Request<()>| -> Response<Bytes> {
+    let handler = move |w: &mut Builder, _r: Request<()>| -> Response<Bytes> {
         let person = &persons[0];
         match serde_json::to_vec(&person) {
             Ok(body) => w
@@ -59,7 +59,7 @@ fn find_person(persons: Arc<Vec<Person>>) -> HandlerFunc {
 }
 
 fn get_persons(persons: Arc<Vec<Person>>) -> HandlerFunc {
-    let handler = move |w: &mut Builder, _r: &Request<()>| -> Response<Bytes> {
+    let handler = move |w: &mut Builder, _r: Request<()>| -> Response<Bytes> {
         match serde_json::to_vec(&persons) {
             Ok(body) => w
                 .header("Content-Type", "application/json")

@@ -14,7 +14,7 @@ impl FileServer {
 }
 
 impl Handler for FileServer {
-    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<Bytes> {
+    fn serve_http(&self, w: &mut Builder, r: Request<()>) -> Response<Bytes> {
         //
     }
 }

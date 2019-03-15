@@ -10,17 +10,17 @@ use std::collections::HashMap;
 /// `go-chi/chi`'s api design
 pub struct DefaultMux {
     m: HashMap<String, MuxEntry>,
-    not_found_handler: Box<Handler>,
+    not_found_handler: Box<dyn Handler>,
 }
 
 struct MuxEntry {
-    h: Box<Handler>,
+    h: Box<dyn Handler>,
 }
 
 impl DefaultMux {
     pub fn new() -> Self {
         let notfound: HandlerFunc =
-            Box::new(|w: &mut Builder, r: &Request<()>| -> Response<Bytes> {
+            Box::new(|w: &mut Builder, r: Request<()>| -> Response<Bytes> {
                 let path = r.uri().path();
                 let str_response = format!("404 not found, path is: {}", path);
                 w.status(StatusCode::NOT_FOUND)
@@ -42,7 +42,7 @@ impl DefaultMux {
     }
 
     /// what the fuck, why rust doesn't support `handler.serve_http` as a closure
-    pub fn handle(&mut self, pattern: String, handler: Box<Handler>) {
+    pub fn handle(&mut self, pattern: String, handler: Box<dyn Handler>) {
         let entry = MuxEntry { h: handler };
         self.m.entry(pattern).or_insert(entry);
     }
@@ -53,7 +53,7 @@ impl DefaultMux {
     }
 
     /// get handler from mux
-    fn handler(&self, r: &Request<()>) -> Option<&Handler> {
+    fn handler(&self, r: &Request<()>) -> Option<&dyn Handler> {
         let path = r.uri().path().to_owned();
         if let Some(entry) = self.m.get(&path) {
             return Some(&*entry.h);
@@ -69,7 +69,7 @@ impl Default for DefaultMux {
 }
 
 impl Handler for DefaultMux {
-    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<Bytes> {
+    fn serve_http(&self, w: &mut Builder, r: Request<()>) -> Response<Bytes> {
         // match router
         if let Some(handler) = self.handler(&r) {
             return handler.serve_http(w, r);

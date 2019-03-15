@@ -10,15 +10,10 @@ use tokio::codec::{Decoder, Encoder};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
 
-/// pass in a server and run the server
-pub fn listen_and_serve(server: impl Server) -> Result<(), Box<std::error::Error>> {
-    server.run()
-}
-
 /// http server trait, may be different backend implementation
 /// e.g tokio, raw tcp socket, quic, http2 and so on
 pub trait Server {
-    fn run(self) -> Result<(), Box<std::error::Error>>;
+    fn listen_and_serve(self) -> Result<(), Box<std::error::Error>>;
 }
 
 pub struct DefaultServer {
@@ -31,7 +26,7 @@ impl DefaultServer {
     }
 }
 impl Server for DefaultServer {
-    fn run(self) -> Result<(), Box<std::error::Error>> {
+    fn listen_and_serve(self) -> Result<(), Box<std::error::Error>> {
         let addr = self.addr.parse::<SocketAddr>()?;
         let listener = TcpListener::bind(&addr)?;
         let mm = Arc::new(self.m);
@@ -64,7 +59,7 @@ fn process(socket: TcpStream, m: Arc<Box<dyn Handler>>) {
                 let mm = m.clone();
                 let f = future::lazy(move || {
                     let mut response_builder = Response::builder();
-                    let response = mm.serve_http(&mut response_builder, &req);
+                    let response = mm.serve_http(&mut response_builder, req);
                     Ok(response)
                 });
 

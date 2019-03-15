@@ -1,7 +1,7 @@
 use bytes::Bytes;
 use chrono::prelude::Local;
 use http::response::Builder;
-use http::{Request, Response};
+use http::{Request, Response, StatusCode};
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
@@ -15,21 +15,23 @@ fn main() -> Result<(), Box<std::error::Error>> {
     let mut m = DefaultMux::new();
 
     let not_found_handler: HandlerFunc =
-        Box::new(|w: &mut Builder, r: &Request<()>| -> Response<Bytes> {
+        Box::new(|w: &mut Builder, r: Request<()>| -> Response<Bytes> {
             let path = r.uri().path();
             let str_response = format!("page: {} has gone, please go to index page", path);
-            w.body(Bytes::from(str_response)).unwrap()
+            w.status(StatusCode::NOT_FOUND)
+                .body(Bytes::from(str_response))
+                .unwrap()
         });
     m.handle("/hello".to_string(), Box::new(HelloHandler::new()));
     m.handle("/world".to_string(), Box::new(WorldHandler::new()));
-    let ab_handler: HandlerFunc = Box::new(|w: &mut Builder, r: &Request<()>| -> Response<Bytes> {
+    let ab_handler: HandlerFunc = Box::new(|w: &mut Builder, r: Request<()>| -> Response<Bytes> {
         let path = r.uri().path();
         let str_response = format!("test strip path, path is {}", path);
         w.body(Bytes::from(str_response)).unwrap()
     });
     m.handle(
         "/a/b".to_string(),
-        strip_prefix("a".to_string(), Box::new(ab_handler)),
+        strip_prefix("/a".to_string(), Box::new(ab_handler)),
     );
     m.handle_func(
         "/foo".to_string(),
@@ -45,7 +47,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
 }
 
 fn foo(db: String) -> HandlerFunc {
-    let foo_handler = move |w: &mut Builder, r: &Request<()>| -> Response<Bytes> {
+    let foo_handler = move |w: &mut Builder, r: Request<()>| -> Response<Bytes> {
         let path = r.uri().path();
         thread::sleep(time::Duration::from_secs(3));
         let str_response = format!("in foo handler, path is: {}, db is {}", path, db);
@@ -55,7 +57,7 @@ fn foo(db: String) -> HandlerFunc {
 }
 
 fn file_handler() -> HandlerFunc {
-    let handler = move |w: &mut Builder, _r: &Request<()>| -> Response<Bytes> {
+    let handler = move |w: &mut Builder, _r: Request<()>| -> Response<Bytes> {
         let mut file = match File::open("./examples/test.png") {
             Err(why) => {
                 let s = format!("couldn't open test.png, {}", why.description());
@@ -79,7 +81,7 @@ fn file_handler() -> HandlerFunc {
 }
 
 fn logging_middleware(f: HandlerFunc) -> HandlerFunc {
-    let result = Box::new(move |w: &mut Builder, r: &Request<()>| -> Response<Bytes> {
+    let result = Box::new(move |w: &mut Builder, r: Request<()>| -> Response<Bytes> {
         println!("request start: {}", Local::now());
         let resp = f(w, r);
         println!("request ends: {}", Local::now());
@@ -96,7 +98,7 @@ impl HelloHandler {
     }
 }
 impl Handler for HelloHandler {
-    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<Bytes> {
+    fn serve_http(&self, w: &mut Builder, r: Request<()>) -> Response<Bytes> {
         let path = r.uri().path();
         let str_response = format!("in hello handler, path is: {}", path);
         w.body(Bytes::from(str_response)).unwrap()
@@ -110,7 +112,7 @@ impl WorldHandler {
     }
 }
 impl Handler for WorldHandler {
-    fn serve_http(&self, w: &mut Builder, r: &Request<()>) -> Response<Bytes> {
+    fn serve_http(&self, w: &mut Builder, r: Request<()>) -> Response<Bytes> {
         let path = r.uri().path();
         let str_response = format!("in world handler, path is: {}", path);
         w.body(Bytes::from(str_response)).unwrap()
