@@ -5,8 +5,9 @@ voyager is a web framework written in rust, inspired by Go `net/http`
 ## features
 
 1. totally based on rust
-2. clean api
-3. minium dependency
+2. clean api learned from Go
+3. middleware based
+4. interface first, components are replacable
 
 ## quick start
 
@@ -16,13 +17,15 @@ run the hello example:
 cargo run --example hello
 curl -i localhost:8080/hello
 curl -i localhost:8080/hi
+curl -i localhost:8080/static/test.png
 ```
 
 ## architecture
 
-1. `http.listen_and_serve` setup http server and bind a `mux` to the server so each incoming request can be dispatched
-2. `mux` register request handler and resolve handler from request
-3. `Handler` is a trait that implement `serve_http` method. every object must implement this trait to handle requests.
+1. `http::listen_and_serve` accept a `Server` instance and run the server
+2. `server::Server` is a trait that defines how to implement a server that can serve requests, with this abstraction
+   users can implement their own flavor of server, the default server is implemented by `tokio` and `http` crate.
+3. `mux::DefaultMux` contains a default mux implementation to route requests to handler.
 
 Because `tokio` works on multiple threads, so every shared data must be wrapped by `Arc`.
 
@@ -41,7 +44,7 @@ cargo clippy
 - [x] middleware
 - [x] json example [see](./examples/json.rs)
 - [ ] a database example
-- [ ] static file serving
+- [x] static file serving(./examples/hello.rs)
 
 ## benchmark
 

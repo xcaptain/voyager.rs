@@ -29,7 +29,6 @@ pub fn strip_prefix(prefix: String, h: Box<dyn Handler>) -> Box<dyn Handler> {
         return h;
     }
     // restruct uri path and create a new request instance
-    // TODO: must be carefully revised to ensure just prefix has been trimed
     let handler: HandlerFunc =
         Box::new(move |w: &mut Builder, r: Request<()>| -> Response<Bytes> {
             let (mut parts, body) = r.into_parts();
