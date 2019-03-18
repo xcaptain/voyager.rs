@@ -6,11 +6,11 @@ use std::{thread, time};
 use voyager::fs::FileServer;
 use voyager::http as myhttp;
 use voyager::http::{strip_prefix, Handler, HandlerFunc};
-use voyager::mux::DefaultMux;
+use voyager::mux::DefaultServeMux;
 use voyager::server::DefaultServer;
 
 fn main() -> Result<(), Box<std::error::Error>> {
-    let mut m = DefaultMux::new();
+    let mut m = DefaultServeMux::new();
 
     let not_found_handler: HandlerFunc =
         Box::new(|w: &mut Builder, r: Request<()>| -> Response<Bytes> {

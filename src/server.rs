@@ -18,24 +18,26 @@ pub trait Server {
 
 pub struct DefaultServer {
     addr: String,
-    m: Box<dyn Handler>,
+    handler: Box<dyn Handler>,
 }
+
 impl DefaultServer {
-    pub fn new(addr: String, m: Box<dyn Handler>) -> Self {
-        DefaultServer { addr, m }
+    pub fn new(addr: String, handler: Box<dyn Handler>) -> Self {
+        DefaultServer { addr, handler }
     }
 }
+
 impl Server for DefaultServer {
     fn listen_and_serve(self) -> Result<(), Box<std::error::Error>> {
         let addr = self.addr.parse::<SocketAddr>()?;
         let listener = TcpListener::bind(&addr)?;
-        let mm = Arc::new(self.m);
+        let ah = Arc::new(self.handler);
         tokio::run({
             listener
                 .incoming()
                 .map_err(|e| println!("failed to accept socket; error = {:?}", e))
                 .for_each(move |socket| {
-                    process(socket, mm.clone());
+                    process(socket, ah.clone());
                     Ok(())
                 })
         });
@@ -43,7 +45,7 @@ impl Server for DefaultServer {
     }
 }
 
-fn process(socket: TcpStream, m: Arc<Box<dyn Handler>>) {
+fn process(socket: TcpStream, ah: Arc<Box<dyn Handler>>) {
     let (tx, rx) =
         // Frame the socket using the `Http` protocol. This maps the TCP socket
         // to a Stream + Sink of HTTP frames.
@@ -56,10 +58,10 @@ fn process(socket: TcpStream, m: Arc<Box<dyn Handler>>) {
     let task = tx
         .send_all(rx.and_then(
             move |req| -> Box<Future<Item = Response<Bytes>, Error = io::Error> + Send> {
-                let mm = m.clone();
+                let ah = ah.clone();
                 let f = future::lazy(move || {
                     let mut response_builder = Response::builder();
-                    let response = mm.serve_http(&mut response_builder, req);
+                    let response = ah.serve_http(&mut response_builder, req);
                     Ok(response)
                 });
 

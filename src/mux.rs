@@ -5,10 +5,8 @@ use http::{Request, Response, StatusCode};
 use std::collections::HashMap;
 
 // TODO: figure out use Box<Handler> or Box<dyn Handler>?
-/// the default mux for the framework, can be replaced as if the new object
-/// implemented the Handler trait, this default implementation will follow
-/// `go-chi/chi`'s api design
-pub struct DefaultMux {
+/// the default mux for the framework
+pub struct DefaultServeMux {
     m: HashMap<String, MuxEntry>,
     not_found_handler: Box<dyn Handler>,
 }
@@ -17,7 +15,7 @@ struct MuxEntry {
     h: Box<dyn Handler>,
 }
 
-impl DefaultMux {
+impl DefaultServeMux {
     pub fn new() -> Self {
         let notfound: HandlerFunc =
             Box::new(|w: &mut Builder, r: Request<()>| -> Response<Bytes> {
@@ -27,7 +25,7 @@ impl DefaultMux {
                     .body(Bytes::from(str_response))
                     .unwrap()
             });
-        DefaultMux {
+        DefaultServeMux {
             m: HashMap::new(),
             not_found_handler: Box::new(notfound),
         }
@@ -62,13 +60,13 @@ impl DefaultMux {
     }
 }
 
-impl Default for DefaultMux {
+impl Default for DefaultServeMux {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Handler for DefaultMux {
+impl Handler for DefaultServeMux {
     fn serve_http(&self, w: &mut Builder, r: Request<()>) -> Response<Bytes> {
         // match router
         if let Some(handler) = self.handler(&r) {

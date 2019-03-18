@@ -5,11 +5,11 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use voyager::http as myhttp;
 use voyager::http::HandlerFunc;
-use voyager::mux::DefaultMux;
+use voyager::mux::DefaultServeMux;
 use voyager::server::DefaultServer;
 
 fn main() -> Result<(), Box<std::error::Error>> {
-    let mut m = DefaultMux::new();
+    let mut m = DefaultServeMux::new();
 
     // this object must be shared across threads, so must be wrapped
     // by Arc to keep thread safe

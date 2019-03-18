@@ -25,7 +25,7 @@ curl -i localhost:8080/static/test.png
 1. `http::listen_and_serve` accept a `Server` instance and run the server
 2. `server::Server` is a trait that defines how to implement a server that can serve requests, with this abstraction
    users can implement their own flavor of server, the default server is implemented by `tokio` and `http` crate.
-3. `mux::DefaultMux` contains a default mux implementation to route requests to handler.
+3. `mux::DefaultServeMux` contains a default mux implementation to route requests to handler.
 
 Because `tokio` works on multiple threads, so every shared data must be wrapped by `Arc`.
 
