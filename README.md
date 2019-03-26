@@ -7,7 +7,7 @@ voyager is a web framework written in rust, inspired by Go `net/http`
 1. totally based on rust
 2. clean api learned from Go
 3. middleware based
-4. interface first, components are replacable
+4. module design, interface first so components are replacable
 
 ## quick start
 
@@ -40,10 +40,11 @@ cargo clippy
 
 ## todo
 
-- [ ] implement `go-chi/chi` api as the default mux
+- [ ] using radix tree to implement a mux
+- [ ] implement worker pool to increase performance
 - [x] middleware
 - [x] json example [see](./examples/json.rs)
-- [ ] a database example
+- [x] a database example
 - [x] static file serving(./examples/hello.rs)
 
 ## benchmark
