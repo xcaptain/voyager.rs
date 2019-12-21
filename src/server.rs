@@ -13,7 +13,7 @@ use tokio::prelude::*;
 /// http server trait, may be different backend implementation
 /// e.g tokio, raw tcp socket, quic, http2 and so on
 pub trait Server {
-    fn listen_and_serve(self) -> Result<(), Box<std::error::Error>>;
+    fn listen_and_serve(self) -> Result<(), Box<dyn std::error::Error>>;
 }
 
 pub struct DefaultServer {
@@ -28,7 +28,7 @@ impl DefaultServer {
 }
 
 impl Server for DefaultServer {
-    fn listen_and_serve(self) -> Result<(), Box<std::error::Error>> {
+    fn listen_and_serve(self) -> Result<(), Box<dyn std::error::Error>> {
         let addr = self.addr.parse::<SocketAddr>()?;
         let listener = TcpListener::bind(&addr)?;
         let ah = Arc::new(self.handler);
@@ -57,7 +57,7 @@ fn process(socket: TcpStream, ah: Arc<Box<dyn Handler>>) {
     // Map all requests into responses and send them back to the client.
     let task = tx
         .send_all(rx.and_then(
-            move |req| -> Box<Future<Item = Response<Bytes>, Error = io::Error> + Send> {
+            move |req| -> Box<dyn Future<Item = Response<Bytes>, Error = io::Error> + Send> {
                 let ah = ah.clone();
                 let f = future::lazy(move || {
                     let mut response_builder = Response::builder();

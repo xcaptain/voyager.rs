@@ -6,7 +6,7 @@ use http::{Request, Response, Uri};
 use std::str::FromStr;
 
 /// pass in a server and run the server
-pub fn listen_and_serve(server: impl Server) -> Result<(), Box<std::error::Error>> {
+pub fn listen_and_serve(server: impl Server) -> Result<(), Box<dyn std::error::Error>> {
     server.listen_and_serve()
 }
 
