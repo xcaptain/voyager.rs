@@ -16,4 +16,4 @@ chrono = "0.4"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive", "rc"] }
 postgres = "0.15"
-casbin-rs = {git = "https://github.com/casbin/casbin-rs.git", rev = "ff40845d206188099b3c13367937e943a1800ee9"}
+casbin = "0.1"

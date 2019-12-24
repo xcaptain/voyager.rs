@@ -13,10 +13,16 @@ use voyager::server::DefaultServer;
 /// create table person(id serial primary key, name varchar(20) not null default '');
 fn main() -> Result<(), Box<std::error::Error>> {
     let mut m = DefaultServeMux::new();
-    let conn =
-        Connection::connect("postgres://postgres@localhost:5432/voyager_test", TlsMode::None).unwrap();
+    let conn = Connection::connect(
+        "postgres://postgres@localhost:5432/voyager_test",
+        TlsMode::None,
+    )
+    .unwrap();
 
-    m.handle_func("/person/".to_string(), create_person(Arc::new(Mutex::new(conn))));
+    m.handle_func(
+        "/person/".to_string(),
+        create_person(Arc::new(Mutex::new(conn))),
+    );
 
     return myhttp::listen_and_serve(DefaultServer::new(
         "127.0.0.1:8080".to_string(),

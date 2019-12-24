@@ -1,22 +1,18 @@
 use bytes::Bytes;
+use casbin::{Enforcer, FileAdapter, Model, RbacApi};
 use http::response::Builder;
 use http::{Request, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use std::sync::RwLock;
 use voyager::http as myhttp;
 use voyager::http::HandlerFunc;
 use voyager::mux::DefaultServeMux;
 use voyager::server::DefaultServer;
-use std::sync::RwLock;
-use casbin_rs::model::Model;
-use casbin_rs::enforcer::Enforcer;
-use casbin_rs::adapter::FileAdapter;
-use casbin_rs::RbacApi;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut m = DefaultServeMux::new();
-    let mut m1 = Model::new();
-    m1.load_model("rbac_model.conf");
+    let m1 = Model::new_from_file("rbac_model.conf");
     let adapter1 = FileAdapter::new("rbac_policy.csv");
     let enforcer = Enforcer::new(m1, adapter1);
     let e = Arc::new(RwLock::new(enforcer));
@@ -35,7 +31,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             age: 20,
         },
     ]);
-    m.handle_func("/person".to_string(), find_person(persons.clone(), Arc::clone(&e)));
+    m.handle_func(
+        "/person".to_string(),
+        find_person(persons.clone(), Arc::clone(&e)),
+    );
     m.handle_func("/persons".to_string(), get_persons(persons.clone()));
 
     return myhttp::listen_and_serve(DefaultServer::new(
@@ -51,7 +50,10 @@ struct Person {
     age: u8,
 }
 
-fn find_person(persons: Arc<Vec<Person>>, enforcer: Arc<RwLock<Enforcer<FileAdapter>>>) -> HandlerFunc {
+fn find_person(
+    persons: Arc<Vec<Person>>,
+    enforcer: Arc<RwLock<Enforcer<FileAdapter>>>,
+) -> HandlerFunc {
     let handler = move |w: &mut Builder, _r: Request<()>| -> Response<Bytes> {
         let mut e = enforcer.write().unwrap();
         assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice"));
